@@ -1,0 +1,45 @@
+Benchmark started on Tue Mar 28 22:21:42 UTC 2017
+Full benchmark log: /home/alex/bench.log
+
+System Info
+-----------
+Processor	: Virtual CPU a7769a6388d5
+CPU Cores	: 1
+Frequency	: 2394.454 MHz
+Memory		: 493 MB
+Swap		:  MB
+Uptime		: 8 days, 41 min,
+
+OS		: 
+Arch		: x86_64 (64 Bit)
+Kernel		: 4.9.11-1-ARCH
+Hostname	: 
+
+
+Speedtest (IPv4 only)
+---------------------
+Your public IPv4 is 
+
+Location		Provider	Speed
+CDN			Cachefly	134MB/s
+
+Atlanta, GA, US		Coloat		386KB/s 
+Dallas, TX, US		Softlayer	41.9MB/s 
+Seattle, WA, US		Softlayer	15.1MB/s 
+San Jose, CA, US	Softlayer	62.9MB/s 
+Washington, DC, US	Softlayer 	355KB/s 
+
+Tokyo, Japan		Linode		14.6MB/s 
+Singapore 		Softlayer	7.02MB/s 
+
+Rotterdam, Netherlands	id3.net		2.83MB/s
+Haarlem, Netherlands	Leaseweb	19.5MB/s 
+
+
+Disk Speed
+----------
+I/O (1st run)	: 346 MB/s
+I/O (2nd run)	: 327 MB/s
+I/O (3rd run)	: 357 MB/s
+Average I/O	: 343.333 MB/s
+
