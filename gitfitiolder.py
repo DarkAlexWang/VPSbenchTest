@@ -254,7 +254,7 @@ def get_start_date():
     """returns a datetime object for the first sunday after one year ago today
     at 12:00 noon"""
     today = datetime.today()
-    date = datetime(today.year - 1, today.month, today.day, 12)
+    date = datetime(today.year - 2, today.month, today.day, 12)
     weekday = datetime.weekday(date)
 
     while weekday < 6:
