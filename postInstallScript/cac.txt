@@ -1,0 +1,181 @@
+# add shell ID no necessary
+# update June 2020
+# copies script to server for reference
+cp -a /mnt2/custom.sh /root/YourShell.sh 
+
+# Added Port_ufw_WG.sh rule for UFW
+timedatectl set-ntp on
+# changes SSH port 
+sed -i "s/#Port 22/Port 22122/g" /etc/ssh/sshd_config
+systemctl restart sshd.service
+echo $'\n' >> /root/installed_on_boot.txt
+# https://www.process.st/server-security/
+
+# install a few apps 
+# dnsmasq inxi screenfetch ansiweather 
+export DEBIAN_FRONTEND=noninteractive
+apt-get update 
+apt-get install -y apt apt-clone apt-transport-https auditd aria2 bash build-essential cmake ca-certificates chkrootkit curl dpkg gcc g++ git glances gnupg-agent logwatch mailutils make namebench pv pigz progress rsync screen shellcheck software-properties-common sysbench time ufw unattended-upgrades unzip wget
+#apt-get install -y openjdk-11-jdk
+# apt-get install -y open-vm-tools
+
+grep " install " /var/log/apt/history.log > /root/Installs.txt
+echo $'\n' >> /root/Installs.txt
+# Quick Apt Fast Install
+/bin/bash -c "$(curl -sL https://git.io/vokNn)"
+echo $'\n' >> /root/installed_on_boot.txt
+# adds user with no password replace info or it will become that
+adduser cacuser1 --gecos "Cac User1,33,1800mixalot,dnd123" --disabled-password
+
+# plain text add your password
+echo "cacuser1:dumbpazz" | chpasswd
+
+# secure shared memory in fstab
+echo "none /run/shm tmpfs defaults,ro 0 0" | tee -a /etc/fstab
+
+# downloads Angristan Wireguard script for installation and rule for UFW WG port
+mkdir /root/wireguard
+cd /root/wireguard
+git clone https://github.com/angristan/wireguard-install.git
+echo "PORT=\$(wg | grep port: | awk '{print \$3}');ufw allow \$PORT" > /root/port_ufw_wg.sh
+
+# downloads Nyr OpenVPN script for installation after login
+cd /root/
+wget https://git.io/vpn -O openvpn-install.sh
+
+# adds datetime to History command
+echo 'export HISTTIMEFORMAT="%d/%m/%y %T "' >> /root/.profile
+source /root/.profile
+echo $'\n' >> /root/installed_on_boot.txt
+# firewall 
+# ufw allow in on ens32 to any port 80 proto tcp 
+ufw default allow outgoing
+ufw default deny incoming
+ufw allow 22122/tcp
+ufw allow in on wg0 to any
+# ufw allow 51820/udp
+# WG PORT 51820 now randomized
+ufw allow 1194/udp
+ufw allow 61208/tcp
+ufw allow ntp
+
+# works live noninteractive try with apt-fast if successful
+DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::=--force-confnew upgrade  -o Dpkg::Options::=--force-confdef -y --allow-downgrades --allow-remove-essential --allow-change-held-packages
+
+# attempt add auto upgrade 
+echo 'APT::Periodic::Update-Package-Lists "1"; APT::Periodic::Unattended-Upgrade "1"; APT::Periodic::AutocleanInterval "7";' > /etc/apt/apt.conf.d/20auto-upgrades
+sed -i 's|//\t"${distro_id}:${distro_codename}-updates";|\t"${distro_id}:${distro_codename}-updates";|g' /etc/apt/apt.conf.d/50unattended-upgrades
+
+# This script is also for 16.04. Use apt-get --purge autoremove on 18.04
+echo "dpkg --list | grep linux-image | awk '{print \$2}' | sort -V | sed -n '/'\$(uname -r)'/q;p' | xargs apt-get -y purge; apt-get autoremove -y; update-grub" > /root/kernelcleaner.sh
+
+# This script is for backing up a list of installed packages
+echo "sudo cp -a /etc/apt/sources.list{,.bak} && sudo apt-get install apt-clone -y && mkdir ~/mypackages && time sudo apt-clone clone ~/mypackages && apt-clone info ~/mypackages/apt-clone-state-ubuntu.tar.gz; echo Use sudo apt-clone restore" > /root/aptclone.sh
+
+# backup sources.list recommended before running apt-clone
+cp /etc/apt/sources.list /etc/apt/sources.list.bak
+
+# Cleans a lot so run apt-clone script before this as backup package list
+echo "df -h; apt-get autoclean && apt-get autoremove -y && apt-get --purge autoremove && apt-get clean all && apt-get purge \$(dpkg -l | awk '/^rc/ {print \$2}'); df -h" > /root/fullclean.sh
+
+# Run after a few months or low on space
+echo 'echo clears btmp syslog shrinks journalctl auth; cat /dev/null > /var/log/btmp; journalctl --vacuum-size=100M; truncate -s 100M /var/log/auth.log; echo > /dev/null | sudo tee /var/log/syslog' > /root/logclean.sh
+
+# backup using rsync to exclude running fs and others
+echo 'mkdir /backup1;
+rsync -aAX -h --exclude={/backup*,/dev,/home,/lost+found,/media,/mnt,/mnt2,/proc,/run,/sys,/tmp,/var/lib/lxcfs,/var/lib/lxd/unix.socket} / /backup1 | tee -a /root/1stbackup.txt ; df -h | tee -a /root/1stbackup.txt; echo Backup good run backtarchecksum to save space | tee -a /root/1stbackup.txt' > /root/backup.sh
+
+# SimpleSH from www.ostechnix.com/simple-sh-a-bash-script-to-install-essential-applications-in-ubuntu
+# add && rm simplesh.zip Ajenti not working
+cd /root/
+wget -qO- -O simplesh.zip https://github.com/rafaelstz/simplesh/archive/master.zip
+unzip simplesh.zip
+
+# Fail2ban creates script and can't get 999 hour ban to work so change manually 2 locals
+# /bin/sh -c 'printf "[DEFAULT]\nbantime=999h\n" > /etc/fail2ban/fail2ban.d/bantime.local'
+#echo (/bin/sh -c 'printf "[DEFAULT]\nbantime=999h\n" > /etc/fail2ban/fail2ban.d/bantime.local) >> /root/testbaninstall.txt
+echo "apt-get install fail2ban -y && cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local && service fail2ban restart" > /root/fail2ban.sh
+#echo ""/bin/sh -c 'printf "[DEFAULT]\\nbantime=999h\\n" > /etc/fail2ban/fail2ban.d/bantime.local'"" >> /root/fail2ban.sh
+
+# set to check on every reboot since servers don't get reboot often
+touch /forcefsck
+tune2fs -c 1 /dev/mapper/ubuntu--vg-root | tee -a /root/installed_on_boot.txt
+tune2fs -c 1 /dev/mapper/CAC_VG-CAC_LV | tee -a /root/installed_on_boot.txt
+
+dpkg --list | grep linux-image | tee -a /root/installed_on_boot.txt
+/bin/bash -c "apt-get install --install-recommends linux-generic-hwe-18.04 -y" | tee -a /root/installed_on_boot.txt
+echo $'\n' >> /root/installed_on_boot.txt
+# Add faster DSN based on namebench OpenDNS, Hurricane Electric, Radiant Alberta CA
+cp -i /etc/netplan/50-cloud-init.yaml /etc/netplan/50-cloud-init.yaml.bak
+sed -i "s/8.8.8.8,1.1.1.1/208.67.220.220,74.82.42.42,66.163.0.161/g" /etc/netplan/50-cloud-init.yaml
+netplan apply
+# Verify DNS changes by running
+# systemd-resolve --status | grep 'DNS Servers' -A2 | tee /root/DNS_nameservers.txt
+
+# SNAPS to consider minecraft nextcloud plex discord duplicity cvescan
+# syncthing tizonia sshesame serve hugo nift namebench-snap subsonic-arubislander
+#snap install mc-installer   and   aws-cli --classic
+
+# Install a honey pot on port 22 so fail2ban can create list of blocked IP
+#snap install sshesame
+
+# verify variable --threads=$each has not dropped $
+echo "for each in 1 2 4 6; do sysbench cpu --cpu-max-prime=20000 --threads=\$each --time=60 run;done > cac.txt && cat cac.txt | grep -i 'number of' | tee -a cac.txt" >> /root/sysbench2020.sh
+
+# List of newly installed kernel and packages
+dpkg --list | grep linux-image | tee -a /root/installed_on_boot.txt
+grep " install " /var/log/dpkg.log | tee -a /root/InstalledPackages.txt
+echo $'\n' >> /root/installed_on_boot.txt
+# ALIAS add here
+echo "alias ll='ls -lathr --color=auto'" >> /root/.bashrc
+echo "export LS_OPTIONS='--color=auto'" >> /root/.bashrc
+echo "alias ls='ls $LS_OPTIONS'" >> /root/.bashrc
+echo "alias rm='rm -i'" >> /root/.bashrc
+echo "alias cp='cp -i'" >> /root/.bashrc
+echo "alias mv='mv -i'" >> /root/.bashrc
+echo "alias l='ls $LS_OPTIONS -lA'" >> /root/.bashrc
+## Colorize the grep command output for ease of use (good for log files)##
+echo "alias grep='grep --color=auto'" >> /root/.bashrc
+echo "alias egrep='egrep --color=auto'" >> /root/.bashrc
+echo "alias fgrep='fgrep --color=auto'" >> /root/.bashrc
+# Stop after sending count ECHO_REQUEST packets #
+echo "alias ping='ping -c 5'" >> /root/.bashrc
+# Do not wait interval 1 second, go fast #
+echo "alias fastping='ping -c 100 -s.2'" >> /root/.bashrc
+echo "ports='netstat -tulanp'" >> /root/.bashrc
+echo "alias wget='wget -c'" >> /root/.bashrc
+## set some other defaults ##
+echo "alias df='df -H'" >> /root/.bashrc
+echo "alias du='du -ch'" >> /root/.bashrc
+echo "alias lt='ll -At1 --color=auto && echo ------Oldest--'" >> /root/.bashrc
+echo "alias ltr='ll -Art1 --color=auto && echo ------Newest--'" >> /root/.bashrc
+echo "alias lls='ls -lah --color=auto && echo ------Alphab--'" >> /root/.bashrc
+echo "alias llr='ls -lahr --color=auto && echo ------R-Alphab--'" >> /root/.bashrc
+# Autostart screen at login for root maybe user
+#printf 'if [[ -z "$STY" ]]; then\n   screen -xRR default\nfi\n' >> /root/.bashrc
+source /root/.bashrc
+
+# Glances server setup to monitor remotely http://ip.address:61208
+echo "glances -w" > /root/glancesServer.sh
+
+# Install script Webmin.sh control panel via port 10000
+echo "echo \"deb http://download.webmin.com/download/repository sarge contrib\" | sudo tee -a /etc/apt/sources.list" >> /root/Webmin.sh
+echo "echo \"deb http://webmin.mirror.somersettechsolutions.co.uk/repository sarge contrib\"  | sudo tee -a /etc/apt/sources.list" >> /root/Webmin.sh
+echo "cd /root/" >> /root/Webmin.sh
+echo "wget http://www.webmin.com/jcameron-key.asc" >> /root/Webmin.sh
+echo "apt-get update" >> /root/Webmin.sh
+echo "apt-fast install webmin -y" >> /root/Webmin.sh
+echo "echo "y" | ufw enable" >> /root/Webmin.sh
+echo "echo ‘Login as user with CaC server password https://ip-address:10000’" >> /root/Webmin.sh
+
+# Netdata.sh set github.com/netdata/netdata
+# Netdata is distributed, real-time performance and health monitoring for 
+# systems and applications. Looks BAD AZZ
+# http://this.machine.ip:19999/
+echo "bash <(curl -Ss https://my-netdata.io/kickstart.sh)" > Netdata.sh
+echo "y" | ufw enable | tee -a /root/installed_on_boot.txt
+echo $'\n' >> /root/installed_on_boot.txt
+# document how long for reboot
+reboot
+# Login verify scripts created, check for dist-upgrade, cleanup, backup, reboot, check uname -a for latest HWE kernel, run scripts as desired 
+# Done

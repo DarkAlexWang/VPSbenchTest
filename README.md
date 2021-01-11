@@ -1,6 +1,9 @@
 ### Note
 VPS Bench Test Tools and Change git commit history.
 
+For quick VPS Bench test, run:
+`wget -qO- bench.sh | bash`
+
 ### What is gitfiti?
 gitfiti _noun_ : Carefully crafted graffiti in a github commit history calendar.
 
